@@ -403,8 +403,10 @@ int main( int argc, char **argv ) {
     int c = getch();
     
     switch(c) {
+    case 'Q':
     case 'q': goto end; break;
     case 'c':
+    case 'C':
       switch(camera) {
       case t_cam: camera=re_center; break;
       case re_center: camera=user; break;
@@ -414,13 +416,18 @@ int main( int argc, char **argv ) {
       break;
     case 't':
       current_turtle = (current_turtle+1)%turtles.size();
+      redraw = true;
       break;
     case KEY_F(5): mode = result; redraw = true; break;
     case KEY_F(2): mode = rules; redraw = true; break;
     case KEY_F(3): 
-      mode = result; 
-      for( turtle &t : turtles ) {
-	t = turtle();
+      mode = result;
+      {
+	int i=2;
+	for( turtle &t : turtles ) {
+	  t = turtle();
+	  t.color = i++;
+	}
       }
       reset( turtles[0],s ); 
       redraw = true; 
