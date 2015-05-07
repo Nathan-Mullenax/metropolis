@@ -19,4 +19,4 @@ F1 - help
 ```
 
 Here's what it looks like on a really big console:
-![Metropolis screenshot](/Nathan-Mullenax/metropolis/blob/master/petri-star.png)
+![Metropolis screenshot](petri-star.png)
