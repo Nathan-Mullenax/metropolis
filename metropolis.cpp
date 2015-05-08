@@ -86,16 +86,16 @@ public:
 
   string str() {
     stringstream ss;
-    ss << "'" << rs << "' -> '" << ws << "'   ";
+    ss << "'" << rs << "'->'" << ws << "'";
     switch(dir) {
-    case Left: ss <<     " left  "; break;
-    case Right: ss <<    " right "; break;
-    case Straight: ss << "forward"; break;
-    case Backward: ss << "reverse"; break;
+    case Left: ss <<     " L "; break;
+    case Right: ss <<    " R "; break;
+    case Straight: ss << " S "; break;
+    case Backward: ss << " B "; break;
     default: ss <<       " ERROR "; break;
     }
-    ss << "   ";
-    ss << s0 << " -> " << s1;
+    
+    ss << s0 << "->" << s1;
     return ss.str();
   }
 };
@@ -223,13 +223,30 @@ void show_help() {
   printw( "    Q = Quit\n" );
 }
 
-void show_ttable(ttable const &t) {
+void show_ttable(ttable const &t, int width, int height) {
   clear();
-  move(0,0);
-  
+  int cwidth = 20;
+  int row(0),col(0);
+  int maxcells = (width/cwidth)*height;
+  int i(0);
   for( rule r : t.rules ) {
-    printw( r.str().c_str() );
-    addch('\n');
+    if( i < maxcells-1 ) {
+      string sr(r.str());
+      move(row,col);
+      printw( sr.c_str() );
+      ++row;
+      if(row>=height) {
+	row = 0;
+	col += cwidth;
+      }
+    } else {
+      ++row;
+      move(row,col);
+      printw("...");
+      return;
+    }
+    ++i;
+    
   }
 }
 
@@ -477,7 +494,7 @@ int main( int argc, char **argv ) {
     }
     if( redraw ) {
       switch(mode) {
-      case rules: show_ttable( programs[current_turtle] ); break;
+      case rules: show_ttable( programs[current_turtle],cwidth,cheight ); break;
       case help: show_help(); break;
       }
     }
