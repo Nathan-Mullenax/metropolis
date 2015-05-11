@@ -28,6 +28,8 @@ using std::time;
 
 typedef enum { Left, Right, Straight, Backward } direction;
 typedef enum { North, South, East, West } cdirection;
+const string symbols(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		     "~!@#$%^&*()_+`1234567890-=[]\\{}|/.,?><';\":");
 
 cdirection apply( cdirection d, direction t ) {
   switch(t) {
@@ -82,7 +84,14 @@ public:
   }
 
   rule() 
-  {}
+  {
+    weight=1;
+    s0 = "0";
+    s1 = "0";
+    rs = ' ';
+    ws = '*';
+    dir= Left;
+  }
 
   string str() {
     stringstream ss;
@@ -97,6 +106,24 @@ public:
     
     ss << s0 << "->" << s1;
     return ss.str();
+  }
+
+  void randomize( unsigned s0, char rs, unsigned nstates, string const &symbols ) {
+    stringstream ss;
+    ss << s0;
+    this->s0 = ss.str ();
+    this->rs = rs;
+    stringstream p;
+    p << ( rand()%nstates );    
+    p >> this->s1;
+    ws = symbols[rand()%symbols.size()];
+    switch(rand()%4) {
+    case 0: dir = Left; break;
+    case 1: dir = Right; break;
+    case 2: dir = Straight; break;
+    case 3: dir = Backward; break;
+    }
+    weight=1;
   }
 };
 
@@ -178,7 +205,13 @@ public:
   cdirection dir;
   string state;
   short color;
-  turtle() : x(0), y(0), dir(South), state("0"), color(0) {
+  turtle() : x(0), y(0), dir(South), state("0"), color(1) {
+  }
+
+  string str() {
+    stringstream t;
+    t << x << "," << y << ": " << state;
+    return t.str();
   }
 };
 
@@ -223,8 +256,13 @@ void show_help() {
   printw( "    Q = Quit\n" );
 }
 
-void show_ttable(ttable const &t, int width, int height) {
+void show_ttable(turtle &tur, ttable const &t, int width, int height) {
   clear();
+
+  printw( tur.str().c_str() );
+  printw("\n\n");
+
+  attron(COLOR_PAIR( tur.color ) );
   int cwidth = 20;
   int row(0),col(0);
   int maxcells = (width/cwidth)*height;
@@ -248,6 +286,7 @@ void show_ttable(ttable const &t, int width, int height) {
     ++i;
     
   }
+  attroff(COLOR_PAIR( tur.color ) );
 }
 
 void killspace( istream &s ) {
@@ -363,9 +402,10 @@ void show_space( space &s, turtle &t, int width, int height, int x0, int y0 ) {
   }
 }
 
-
-
 int main( int argc, char **argv ) {
+  int nstates(2);
+  int nsymbols(5);
+
   stringstream log;
   srand(time(NULL));
 
@@ -379,7 +419,9 @@ int main( int argc, char **argv ) {
   size_t current_turtle=0;
 
   space s;
-
+  for(int i=0; i<COLOR_PAIRS; ++i) {
+    init_pair( i, (i+1)%COLORS, COLOR_BLACK );
+  }
   if( argc==1 ) {
     ttable program;
     program.rules.push_back( rule( "0","0",' ', '*','l' ) );
@@ -394,7 +436,7 @@ int main( int argc, char **argv ) {
       turtle t;
       t.color = i+1;
       turtles.push_back(t);
-      init_pair(i+1, (i+1)%COLORS, COLOR_BLACK );
+      //  init_pair(i+1, (i+1)%COLORS, COLOR_BLACK );
     }
   }
  
@@ -418,7 +460,7 @@ int main( int argc, char **argv ) {
   while(true) {
 
     int c = getch();
-    
+   
     switch(c) {
     case 'Q':
     case 'q': goto end; break;
@@ -437,6 +479,38 @@ int main( int argc, char **argv ) {
       break;
     case KEY_F(5): mode = result; redraw = true; break;
     case KEY_F(2): mode = rules; redraw = true; break;
+    case 'N': nstates++; break;
+    case 'n': nstates = nstates > 1 ? nstates-1 : 1; break;
+    case 'S': nsymbols = (nsymbols < symbols.size()) ? nsymbols+1 : 1; break;
+    case 's': nsymbols = nsymbols > 1 ? nsymbols-1: 1; break;
+    case KEY_F(4): 
+      {
+	programs = vector<ttable>();
+	//turtles = vector<turtle>();
+	s = space();
+	
+	// generate a deterministic automaton
+	ttable p;
+	string alpha = symbols.substr(0,nsymbols);
+	for( unsigned s0=0; s0<nstates; ++s0 ) {
+	  for( unsigned symbol=0; symbol<nsymbols; ++symbol ) {
+	    rule r;
+	    
+	    r.randomize( s0, symbols[symbol], nstates, alpha );
+	    p.rules.push_back( r );
+	  }
+	}
+	current_turtle = 0;
+	p.build_index();
+	programs.push_back(p);
+	turtle t;
+	t.state = "0";
+	t.color=1 + (rand()%(COLOR_PAIRS-1));
+	//turtles.push_back(t);
+	
+      } 
+      break;
+      
     case KEY_F(3): 
       mode = result;
       {
@@ -494,7 +568,7 @@ int main( int argc, char **argv ) {
     }
     if( redraw ) {
       switch(mode) {
-      case rules: show_ttable( programs[current_turtle],cwidth,cheight ); break;
+      case rules: show_ttable( turtles[current_turtle], programs[current_turtle],cwidth,cheight ); break;
       case help: show_help(); break;
       }
     }
