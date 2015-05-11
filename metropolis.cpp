@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <set>
 #include <tuple>
 #include <ncurses.h>
 #include <iostream>
@@ -25,12 +26,13 @@ using std::isalpha;
 using std::rand;
 using std::srand;
 using std::time;
+using std::set;
 
 typedef enum { Left, Right, Straight, Backward } direction;
 typedef enum { North, South, East, West } cdirection;
 const string symbols(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		     "~!@#$%^&*()_+`1234567890-=[]\\{}|/.,?><';\":");
-
+// takes a direction and applies a transformation
 cdirection apply( cdirection d, direction t ) {
   switch(t) {
   case Left:
@@ -59,6 +61,8 @@ cdirection apply( cdirection d, direction t ) {
   }
 }
 
+// rule represents one clause of a transition function
+// f( state, read_symbol ) : ( new_state, write_symbol, direction ) % weight
 class rule {
 public:
   // start state, end state
@@ -93,6 +97,7 @@ public:
     dir= Left;
   }
 
+  // create a short, readable string representing this rule
   string str() {
     stringstream ss;
     ss << "'" << rs << "'->'" << ws << "'";
@@ -108,6 +113,9 @@ public:
     return ss.str();
   }
 
+  // given an initial state and symbol, randomly generate a rule 
+  // (direction, state, and write symbol)
+  // states are assumed to be named after integer 0 through nstates-1
   void randomize( unsigned s0, char rs, unsigned nstates, string const &symbols ) {
     stringstream ss;
     ss << s0;
@@ -133,6 +141,7 @@ public:
   // support lookup operator ( state, read symbol -> applicable rule index )
   map< pair<string,char>, vector<size_t> > index;
   
+  // check if there is a rule
   bool has( string s, char c ) {
     return index.count( pair<string,char>(s,c) ) > 0;
   }
@@ -145,6 +154,10 @@ public:
     }
   }
 
+  // lookup a rule. NB: call has first or this will
+  // throw an exception. If this throws an exception,
+  // you might have changed a ruleset without calling
+  // build index.
   rule & operator() ( string s, char c ) {
     pair<string,char> l(s,c);
     if( index.count(l) > 0 ) {
@@ -169,6 +182,7 @@ private:
   struct datum { char c; short color; };
   map< pair<int,int>, datum > data;
 public:
+  // lookup coordinate
   char& operator() ( int x, int y ) {
     pair<int,int> l(x,y);
     if( data.count(l) == 0 ) {
@@ -178,6 +192,8 @@ public:
     return data[l].c;
   }
   
+  // the () operator doesn't return all of the info
+  // stored in the map.
   void get( int x, int y, char &c, short &color ) {
     pair<int,int> l(x,y);
     if( data.count(l) == 0 ) {
@@ -188,6 +204,8 @@ public:
     color = data[l].color;
   }
 
+  // similarly, using space(x,y) = 'v' doesn't allow us
+  // to assign a color
   void put( int x, int y, char c, short color ) {
     datum d;
     d.c = c; d.color = color;
@@ -208,6 +226,8 @@ public:
   turtle() : x(0), y(0), dir(South), state("0"), color(1) {
   }
 
+  // create a brief description of the current
+  // state of this turtle
   string str() {
     stringstream t;
     t << x << "," << y << ": " << state;
@@ -223,11 +243,18 @@ void step( turtle &t, ttable &ruleset, space &s ) {
   // current state of turtle
   string s0 = t.state;
   if( ruleset.has( s0,rs) ) {
+    // lookup appropriate rule. Note: non-determinism 
+    // is supported by the lookup function, operator() for
+    // the ttable class. 
     rule r = ruleset( s0, rs );
+    // turn
     t.dir = apply( t.dir, r.dir );
+    // do state transition
     t.state = r.s1;
+    // write symbol
     s.put(t.x,t.y, r.ws,t.color);
   }
+  // move
   switch(t.dir) {
   case North: --t.y; break;
   case South: ++t.y; break;
@@ -250,6 +277,12 @@ void show_help() {
   printw( "   F1 = Help, but you already figured that out.\n" );
   printw( "   F2 = Show rules\n" );
   printw( "   F3 = Reset\n" );
+  printw( "   F4 = Generate random turtle\n");
+  printw( "      Parameters:\n");
+  printw( "      N - increase number of states\n");
+  printw( "      n - decrease number of states\n");
+  printw( "      S - increate number of symbols\n");
+  printw( "      s - decrease number of symbols\n");
   printw( "   F5 = Run\n" );
   printw( "    C = Change camera\n" );
   printw( "    T = Switch turtle\n" );
@@ -486,17 +519,22 @@ int main( int argc, char **argv ) {
     case KEY_F(4): 
       {
 	programs = vector<ttable>();
-	//turtles = vector<turtle>();
+	turtles = vector<turtle>();
 	s = space();
 	
 	// generate a deterministic automaton
 	ttable p;
 	string alpha = symbols.substr(0,nsymbols);
+       
+      
 	for( unsigned s0=0; s0<nstates; ++s0 ) {
 	  for( unsigned symbol=0; symbol<nsymbols; ++symbol ) {
 	    rule r;
-	    
+	   
+	     
 	    r.randomize( s0, symbols[symbol], nstates, alpha );
+	   
+
 	    p.rules.push_back( r );
 	  }
 	}
@@ -506,11 +544,19 @@ int main( int argc, char **argv ) {
 	turtle t;
 	t.state = "0";
 	t.color=1 + (rand()%(COLOR_PAIRS-1));
-	//turtles.push_back(t);
+	turtles.push_back(t);
 	
       } 
       break;
-      
+    case KEY_F(6):
+      {
+	ttable p = programs[current_turtle];
+	turtle t = turtles[current_turtle];
+	t.dir = apply( t.dir, Left );
+	turtles.push_back(t);
+	programs.push_back(p);
+      }
+      break;
     case KEY_F(3): 
       mode = result;
       {

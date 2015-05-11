@@ -15,8 +15,16 @@ The simulation will run much faster is the camera is off.
 Keys:
 C - change camera
 T - change selected turtle
-F3 - show rules
+F2 - show rules
+F3 - restart
+F4 - generate random ruleset
+   parameters:
+   N - increase number of states
+   n - decrease number of states
+   S - increate number of symbols
+   s - decrease number of symbols
 F5 - run
+F6 - copy and spin current turtle
 F1 - help
 ```
 
