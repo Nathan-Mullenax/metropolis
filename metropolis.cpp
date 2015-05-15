@@ -221,8 +221,25 @@ class turtle {
 public: 
   int x,y;
   cdirection dir;
+private:
   string state;
+  map<string,unsigned int> state_histo;
+public:
   short color;
+  
+  void set_state( string s ) {
+    state = s;
+    if( state_histo.count(s) == 0 ) {
+      state_histo[s] = 0;
+    }
+    ++state_histo[s];
+  }
+
+  string get_state() {
+    return state;
+  }
+  
+  
   turtle() : x(0), y(0), dir(South), state("0"), color(1) {
   }
 
@@ -233,6 +250,18 @@ public:
     t << x << "," << y << ": " << state;
     return t.str();
   }
+
+  // show turtle stats
+  void show_stats( int x, int y ) {
+    move(y,x);
+    int line=0;
+    for( auto it=state_histo.begin(); it != state_histo.end(); ++it ) {
+      move( y+line,x );
+      printw( it->first.c_str() );
+      move( y+line++, x + 16 );
+      printw( "%d", it->second );
+    }
+  }
 };
 
 // move the turtle according to ruleset. modify space
@@ -241,7 +270,7 @@ void step( turtle &t, ttable &ruleset, space &s ) {
   // get symbol at current location
   char rs = s(t.x,t.y);
   // current state of turtle
-  string s0 = t.state;
+  string s0 = t.get_state();
   if( ruleset.has( s0,rs) ) {
     // lookup appropriate rule. Note: non-determinism 
     // is supported by the lookup function, operator() for
@@ -250,7 +279,7 @@ void step( turtle &t, ttable &ruleset, space &s ) {
     // turn
     t.dir = apply( t.dir, r.dir );
     // do state transition
-    t.state = r.s1;
+    t.set_state(r.s1);
     // write symbol
     s.put(t.x,t.y, r.ws,t.color);
   }
@@ -433,7 +462,10 @@ void show_space( space &s, turtle &t, int width, int height, int x0, int y0 ) {
     }
    
   }
+  // turtle info overlay:
+  t.show_stats(width*3/4,0);
 }
+
 
 int main( int argc, char **argv ) {
   int nstates(2);
@@ -522,7 +554,8 @@ int main( int argc, char **argv ) {
 	turtles = vector<turtle>();
 	s = space();
 	
-	// generate a deterministic automaton
+	// generate a deterministic automaton 
+	// note: this does not guarantee that all states are reachable
 	ttable p;
 	string alpha = symbols.substr(0,nsymbols);
        
@@ -530,11 +563,7 @@ int main( int argc, char **argv ) {
 	for( unsigned s0=0; s0<nstates; ++s0 ) {
 	  for( unsigned symbol=0; symbol<nsymbols; ++symbol ) {
 	    rule r;
-	   
-	     
 	    r.randomize( s0, symbols[symbol], nstates, alpha );
-	   
-
 	    p.rules.push_back( r );
 	  }
 	}
@@ -542,7 +571,7 @@ int main( int argc, char **argv ) {
 	p.build_index();
 	programs.push_back(p);
 	turtle t;
-	t.state = "0";
+	t.set_state( "0" );
 	t.color=1 + (rand()%(COLOR_PAIRS-1));
 	turtles.push_back(t);
 	
