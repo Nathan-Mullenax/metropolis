@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 
 using std::runtime_error;
 using std::string;
@@ -32,6 +33,7 @@ typedef enum { Left, Right, Straight, Backward } direction;
 typedef enum { North, South, East, West } cdirection;
 const string symbols(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		     "~!@#$%^&*()_+`1234567890-=[]\\{}|/.,?><';\":");
+const int spacing(20);
 // takes a direction and applies a transformation
 cdirection apply( cdirection d, direction t ) {
   switch(t) {
@@ -485,7 +487,7 @@ int main( int argc, char **argv ) {
 
   space s;
   for(int i=0; i<COLOR_PAIRS; ++i) {
-    init_pair( i, (i+1)%COLORS, COLOR_BLACK );
+    init_pair( i, 1+(i+2)%(COLORS-1), COLOR_BLACK );
   }
   if( argc==1 ) {
     ttable program;
@@ -519,6 +521,7 @@ int main( int argc, char **argv ) {
   camera = re_center;
   mode = result;
   bool redraw(true);
+  bool paused(false);
 
   int x0(-cwidth/2), y0(-cheight/2);
 
@@ -527,6 +530,7 @@ int main( int argc, char **argv ) {
     int c = getch();
    
     switch(c) {
+    case ' ': paused = !paused; break;
     case 'Q':
     case 'q': goto end; break;
     case 'c':
@@ -589,14 +593,23 @@ int main( int argc, char **argv ) {
     case KEY_F(3): 
       mode = result;
       {
-	int i=2;
+	int i=1;
+	int j=0;
+	int x = static_cast<int>(1+std::sqrt(turtles.size()));
+       
+	
 	for( turtle &t : turtles ) {
 	  t = turtle();
-	  t.color = i++;
+	  t.x = (j%x)*spacing;
+	  t.y = (j/x)*spacing;
+	  t.color = (++i)%COLOR_PAIRS;
+	  ++j;
 	}
       }
-      reset( turtles[0],s ); 
+      //reset( turtles[0],s ); 
+      s = space();
       redraw = true; 
+      paused = false;
       break;
     case KEY_F(1): mode = help; redraw = true; break;
     case KEY_LEFT: --x0; redraw=true; break;
@@ -606,8 +619,10 @@ int main( int argc, char **argv ) {
     }
     
     if(mode==result) {
-      for( size_t i=0; i<turtles.size(); ++i) {
-	step(turtles[i],programs[i],s);
+      if( !paused ) {
+	for( size_t i=0; i<turtles.size(); ++i) {
+	  step(turtles[i],programs[i],s);
+	}
       }
       switch(camera) {
       case t_cam: 
