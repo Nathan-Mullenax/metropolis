@@ -13,53 +13,26 @@
 #include <ctime>
 #include <cmath>
 
-using std::runtime_error;
-using std::string;
-using std::vector;
-using std::map;
-using std::stringstream;
-using std::pair;
-using std::istream;
-using std::ifstream;
-using std::ofstream;
-using std::isspace;
-using std::isalpha;
-using std::rand;
-using std::srand;
-using std::time;
-using std::set;
+using namespace std;
 
 typedef enum { Left, Right, Straight, Backward } direction;
-typedef enum { North, South, East, West } cdirection;
+typedef enum { North=0, East=1, South=2, West=3 } cdirection;
 const string symbols(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		     "~!@#$%^&*()_+`1234567890-=[]\\{}|/.,?><';\":");
 const int spacing(20);
+
+
 // takes a direction and applies a transformation
 cdirection apply( cdirection d, direction t ) {
   switch(t) {
   case Left:
-    switch(d) {
-    case North: return West;
-    case South: return East;
-    case East: return North;
-    case West: return South;
-    }
+    return static_cast<cdirection>( (static_cast<int>(d) + 3)%4 );
   case Right:
-    switch(d) {
-    case North: return East;
-    case South: return West;
-    case East: return South;
-    case West: return North;
-    }
+    return static_cast<cdirection>( (static_cast<int>(d) + 1)%4 );
   case Straight:
     return d;
   case Backward:
-    switch(d) {
-    case North: return South;
-    case South: return North;
-    case East: return West;
-    case West: return East;
-    }
+    return static_cast<cdirection>( (static_cast<int>(d) + 2)%4 );
   }
 }
 
@@ -89,15 +62,8 @@ public:
     }
   }
 
-  rule() 
-  {
-    weight=1;
-    s0 = "0";
-    s1 = "0";
-    rs = ' ';
-    ws = '*';
-    dir= Left;
-  }
+  rule() : weight(1), s0("0"), s1("0"), rs(' '), ws('*')
+  { }
 
   // create a short, readable string representing this rule
   string str() {
@@ -109,8 +75,7 @@ public:
     case Straight: ss << " S "; break;
     case Backward: ss << " B "; break;
     default: ss <<       " ERROR "; break;
-    }
-    
+    } 
     ss << s0 << "->" << s1;
     return ss.str();
   }
@@ -127,12 +92,7 @@ public:
     p << ( rand()%nstates );    
     p >> this->s1;
     ws = symbols[rand()%symbols.size()];
-    switch(rand()%4) {
-    case 0: dir = Left; break;
-    case 1: dir = Right; break;
-    case 2: dir = Straight; break;
-    case 3: dir = Backward; break;
-    }
+    dir = static_cast<direction>( rand()%4 );
     weight=1;
   }
 };
