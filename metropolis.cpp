@@ -12,15 +12,55 @@
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+#include <deque>
 
 using namespace std;
 
-typedef enum { Left, Right, Straight, Backward } direction;
+typedef enum { Left=0, Right, Straight, Backward } direction;
+const string DIRS("LRSB");
 typedef enum { North=0, East=1, South=2, West=3 } cdirection;
 const string symbols(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		     "~!@#$%^&*()_+`1234567890-=[]\\{}|/.,?><';\":");
 const int spacing(20);
 
+
+string get_string( string const &prompt, int x, int y, int fieldwidth=20 ) {
+  move(y,x);
+  int c(0);
+  deque<char> s;
+  int dx(prompt.size());
+  move(y,x);
+  printw(prompt.c_str());
+  attron(A_UNDERLINE);
+  printw(string(fieldwidth,' ').c_str());
+  
+  move(y,x+dx);
+  
+  do {
+    c = getch();
+    if((c==KEY_BACKSPACE||c==KEY_LEFT) ) {
+      if( s.size() > 0 ) {
+	--dx;
+	move(y,x + dx );
+	addch(' ');
+	move(y,x + dx );
+	s.pop_back();
+      }
+    } else if ( c=='\n' || c==-1 ) {
+      // do nothing
+    } else { 
+      s.push_back( static_cast<char>(c) );
+      addch(static_cast<char>(c));
+      ++dx;
+    }
+  } while( c != '\n' );
+  attroff(A_UNDERLINE);
+  stringstream ss;
+  for( char a : s ) {
+    ss << a;
+  }
+  return ss.str();
+}
 
 // takes a direction and applies a transformation
 cdirection apply( cdirection d, direction t ) {
@@ -201,7 +241,7 @@ public:
     return state;
   }
   
-  
+
   turtle() : x(0), y(0), dir(South), state("0"), color(1) {
   }
 
@@ -313,6 +353,13 @@ void show_ttable(turtle &tur, ttable const &t, int width, int height) {
   attroff(COLOR_PAIR( tur.color ) );
 }
 
+void save_ttable( ttable const &t, ostream &s ) {
+  for( const rule &r: t.rules ) {
+    s << "{" << r.s0 << "," << r.s1 << "}['" << r.rs 
+      << "','" << r.ws << "'," << DIRS[(size_t)(r.dir)%4] << "]\n";
+  }
+}
+
 void killspace( istream &s ) {
   while( isspace(s.peek()) ) { s.get(); }
 }
@@ -415,16 +462,24 @@ void show_space( space &s, turtle &t, int width, int height, int x0, int y0 ) {
   move(0,0);
   for( int y=y0; y<y0+height; ++y ) {  
     for( int x=x0; x<x0+width; ++x ) {
+      
       char c(0);
       short color(0);
       s.get(x,y,c,color);
       attron(COLOR_PAIR( color ) );
       addch(c);
       attroff(COLOR_PAIR( color ) );
+     
     }
+    
    
   }
   // turtle info overlay:
+  move( t.y-y0,t.x-x0 );
+  attron(A_REVERSE);
+  addch(s(t.x,t.y));
+  
+  attroff(A_REVERSE);  
   t.show_stats(width*3/4,0);
 }
 
@@ -512,6 +567,13 @@ int main( int argc, char **argv ) {
     case 'n': nstates = nstates > 1 ? nstates-1 : 1; break;
     case 'S': nsymbols = (nsymbols < symbols.size()) ? nsymbols+1 : 1; break;
     case 's': nsymbols = nsymbols > 1 ? nsymbols-1: 1; break;
+    case 'o': { // save
+      string fn = get_string( "filename: ", 0, 0 );
+      ofstream f(fn);
+      save_ttable(programs[current_turtle],f);
+      
+      
+    } break;
     case KEY_F(4): 
       {
 	programs = vector<ttable>();
@@ -618,7 +680,8 @@ int main( int argc, char **argv ) {
     }
     if( redraw ) {
       switch(mode) {
-      case rules: show_ttable( turtles[current_turtle], programs[current_turtle],cwidth,cheight ); break;
+      case rules: show_ttable( turtles[current_turtle], programs[current_turtle],cwidth,cheight ); 
+	break;
       case help: show_help(); break;
       }
     }
